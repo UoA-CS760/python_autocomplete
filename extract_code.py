@@ -129,23 +129,27 @@ def _read_file(path: Path) -> List[int]:
     """
     Read and encode a file
     """
-    with open(str(path)) as f:
-        content = f.read()
+    try:
+        with open(str(path)) as f:
+            content = f.read()
 
-    parsed = parse_string(content)
-    parsed = _remove_comments(parsed)
-    parsed = _remove_empty_lines(parsed)
-    parsed = _fix_indentation(parsed)
-    serialized = encode(parsed)
+        parsed = parse_string(content)
+        parsed = _remove_comments(parsed)
+        parsed = _remove_empty_lines(parsed)
+        parsed = _fix_indentation(parsed)
+        serialized = encode(parsed)
 
-    # deserialized = tokenizer.deserialize(serialized)
-    # for i in range(len(serialized)):
-    #     assert deserialized[i] == parsed[i]
-    #
-    # res = to_text(deserialized)
-    # print(res)
+        # deserialized = tokenizer.deserialize(serialized)
+        # for i in range(len(serialized)):
+        #     assert deserialized[i] == parsed[i]
+        #
+        # res = to_text(deserialized)
+        # print(res)
 
-    return serialized
+        return serialized
+    except:
+        logger.log()
+        return None
 
 
 def main():
@@ -156,7 +160,10 @@ def main():
     with open(str(Path(os.getcwd()) / 'data' / 'all.py'), 'w') as f:
         for i, source in monit.enum("Parse", source_files):
             serialized = _read_file(source.path)
-            # return
+
+            if serialized is None:
+                continue
+
             serialized = [str(t) for t in serialized]
             f.write(f"{str(source.path)}\n")
             f.write(" ".join(serialized) + "\n")
