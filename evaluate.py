@@ -412,7 +412,7 @@ def main():
 
     experiment.add_pytorch_models({'base': model})
 
-    experiment.load("2a86d636936d11eab8740dffb016e7b1", 72237)
+    experiment.load("94ab8470e6a711ea9703c1dbf199539e", 5654)
 
     # For debugging with a specific piece of source code
     # predictor = Predictor(model, lstm_layers, lstm_size)
