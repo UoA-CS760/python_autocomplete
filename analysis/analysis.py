@@ -147,7 +147,8 @@ def displayTopNodes(file):
     plt.show()
 
 def main():
-
+    
+    #uncomment to run the functions
     #getLibraries('./../Dataset/python100k_train.txt')
     #listCount('./analysis_data/libraries.pkl', 20)
     #getContext('./../Dataset/github_repos.txt')
