@@ -19,7 +19,7 @@ experiment.create(name="simple_lstm",
                   comment="Simple LSTM")
 
 # device to evaluate on
-device = torch.device("cuda:0")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Beam search
 BEAM_SIZE = 8
@@ -36,7 +36,7 @@ class ScoredItem(NamedTuple):
     idx: Tuple
 
 
-class Predictor:
+class Predictor: #Responsible for predicting the next few characters 
     """
     Predicts the next few characters
     """
@@ -291,7 +291,8 @@ class Predictor:
                 choices.append(ScoredItem(choice, (s_idx, idx)))
         choices.sort(key=lambda x: x.score, reverse=True)
 
-        # Return the best option
+        # Return the best option #Want it to get the best 5 options
+        top_5_suggestions = []
         for choice in choices:
             codes = suggestions[choice.idx[0]].codes[choice.idx[1]]
             res = ""
@@ -306,7 +307,12 @@ class Predictor:
             if res.strip() == "":
                 continue
 
-            return res
+            top_5_suggestions.append(res)
+            if len(top_5_suggestions) == 5:
+                break
+        
+        if len(top_5_suggestions) > 0:
+            return top_5_suggestions
 
         # Return blank if there are no options
         return ''
@@ -354,24 +360,28 @@ class Evaluator:
 
             # Type the line character by character
             while rest_of_line != '':
-                suggestion = self.__predictor.get_suggestion()
+                suggestions = self.__predictor.get_suggestion() #
+                matched = False 
+                for suggestion in suggestions: 
+                    # If suggestion matches
+                    if suggestion != '' and rest_of_line.startswith(suggestion):
+                        # Log
+                        logs.append((suggestion[0], [Style.underline, Text.danger]))
+                        logs.append((suggestion[1:], Style.underline))
 
-                # If suggestion matches
-                if suggestion != '' and rest_of_line.startswith(suggestion):
-                    # Log
-                    logs.append((suggestion[0], [Style.underline, Text.danger]))
-                    logs.append((suggestion[1:], Style.underline))
+                        keys_saved += len(suggestion) - 1
 
-                    keys_saved += len(suggestion) - 1
+                        # Skip the prediction text
+                        rest_of_line = rest_of_line[len(suggestion):]
 
-                    # Skip the prediction text
-                    rest_of_line = rest_of_line[len(suggestion):]
+                        # Add text to the predictor
+                        self.__predictor.add(suggestion)
 
-                    # Add text to the predictor
-                    self.__predictor.add(suggestion)
-
+                        matched = True 
+                        break 
+                    
                 # If the suggestion doesn't match
-                else:
+                if not matched:
                     # Add the next character
                     self.__predictor.add(rest_of_line[0])
                     logs.append((rest_of_line[0], Text.subtle))
@@ -400,7 +410,7 @@ def main():
     lstm_layers = 3
 
     with monit.section("Loading data"):
-        files = parser.load.load_files()
+        files = parser.load.load_files() #Just loads in everything
         train_files, valid_files = parser.load.split_train_valid(files, is_shuffle=False)
 
     with monit.section("Create model"):
@@ -412,7 +422,7 @@ def main():
 
     experiment.add_pytorch_models({'base': model})
 
-    experiment.load("94ab8470e6a711ea9703c1dbf199539e", 5654)
+    experiment.load("94ab8470e6a711ea9703c1dbf199539e", 5654) #right is model number, loads in model with model number
 
     # For debugging with a specific piece of source code
     # predictor = Predictor(model, lstm_layers, lstm_size)
@@ -420,7 +430,7 @@ def main():
     #     predictor.add(s)
     # s = predictor.get_suggestion()
 
-    # Evaluate all the files in validation set
+    # Evaluate all the files in validation set #Here is where the evaluation happens
     for file in valid_files:
         logger.log(str(file.path), Text.heading)
         evaluator = Evaluator(model, file,
