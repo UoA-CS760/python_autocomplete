@@ -154,6 +154,7 @@ def _read_file(path: Path) -> List[int]:
 
 def main():
     source_files = _GetPythonFiles().files
+    source_files.sort()
 
     logger.inspect(source_files)
 

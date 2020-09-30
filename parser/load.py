@@ -17,7 +17,6 @@ def load_files() -> List[EncodedFile]:
     """
     with open(str(lab.get_data_path() / 'all.py')) as f:
         lines = f.readlines()
-
     files = []
     for i in range(0, len(lines), 2):
         path = lines[i][:-1]
@@ -36,22 +35,18 @@ def split_train_valid(files: List[EncodedFile],
     """
     Split training and validation sets
     """
-    if is_shuffle:
+    if is_shuffle: #Not shuffling at the moment
         np.random.shuffle(files)
 
     total_size = sum([len(f.codes) for f in files])
     valid = []
     valid_size = 0
     while len(files) > 0:
-        if valid_size > total_size * 0.15:
-            break
         valid.append(files[0])
         valid_size += len(files[0].codes)
         files.pop(0)
 
     train_size = sum(len(f.codes) for f in files)
-    if train_size < total_size * 0.60:
-        raise RuntimeError("Validation set too large")
 
     logger.inspect(train_size=train_size,
                    valid_size=valid_size,

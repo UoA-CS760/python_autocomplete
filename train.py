@@ -56,6 +56,8 @@ def get_batches(files: List[parser.load.EncodedFile], eof: int, batch_size=32, s
     # Extract output, i.e. the next char
     y = data[1:(batch_size * seq_len * batches) + 1]
 
+    print(x, y)
+
     # Covert the flat data into batches
     x = list_to_batches(x, batch_size, batches, seq_len)
     y = list_to_batches(y, batch_size, batches, seq_len)

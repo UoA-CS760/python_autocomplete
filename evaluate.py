@@ -13,13 +13,14 @@ import parser.load
 import parser.tokenizer
 from model import SimpleLstmModel
 from parser import tokenizer
+from termcolor import colored, cprint
 
 # Experiment configuration to load checkpoints
 experiment.create(name="simple_lstm",
                   comment="Simple LSTM")
 
 # device to evaluate on
-device = torch.device("cuda:0")
+device = torch.device("cuda")
 
 # Beam search
 BEAM_SIZE = 8
@@ -150,9 +151,7 @@ class Predictor:
         # Remove last token
         tokens = self.__clear_untokenized(tokens)
 
-        # Check if previous tokens is a prefix
         assert len(tokens) >= len(self._tokens)
-
         for t1, t2 in zip(self._tokens, tokens):
             assert t1.type == t2.type
             assert t1.string == t2.string
@@ -171,10 +170,15 @@ class Predictor:
 
         self.time_add += time.time() - start_time
 
+
+
     def get_predictions(self, codes_batch: List[List[int]]):
         # Sequence length and batch size
         seq_len = len(codes_batch[0])
         batch_size = len(codes_batch)
+
+        # print("sequence length:", seq_len)
+        # print("batch length:", batch_size)
 
         for codes in codes_batch:
             assert seq_len == len(codes)
@@ -291,6 +295,36 @@ class Predictor:
                 choices.append(ScoredItem(choice, (s_idx, idx)))
         choices.sort(key=lambda x: x.score, reverse=True)
 
+        # print('\n')
+        count_choice = 0
+        # resses = []
+        # for choice in choices:
+        #     codes = suggestions[choice.idx[0]].codes[choice.idx[1]]
+        #     res = ""
+        #     prev = self._last_token
+        #     for code in codes[1:]:
+        #         res += tokenizer.DECODE[code][prev]
+        #         prev = code
+        #
+        #     count_choice += 1
+        #     res = res[len(self._untokenized):]
+        #     print(res)
+        #     resses.append(res)
+
+        # print(len(resses))
+
+        # for choice in choices[:5]:
+        #     codes = suggestions[choice.idx[0]].codes[choice.idx[1]]
+        #     res = ""
+        #     prev = self._last_token
+        #     for code in codes[1:]:
+        #         res += tokenizer.DECODE[code][prev]
+        #         prev = code
+        #
+        #     count_choice += 1
+        #     res = res[len(self._untokenized):]
+        #     print("#",count_choice,"choice: ", res)
+
         # Return the best option
         for choice in choices:
             codes = suggestions[choice.idx[0]].codes[choice.idx[1]]
@@ -347,18 +381,30 @@ class Evaluator:
         for line, content in enumerate(self.__content):
             # Keep reference to rest of the line
             rest_of_line = content
+            print(rest_of_line)
 
             # Build the line for logging with colors
             # The line number
             logs = [(f"{line: 4d}: ", Text.meta)]
 
+            # flag_enter = 0
             # Type the line character by character
             while rest_of_line != '':
+
                 suggestion = self.__predictor.get_suggestion()
+                # if flag_enter == 0:
+                #     print(colored("ORIGINAL LINE:", 'red'), colored(rest_of_line, 'red'))
+                #
+                # elif flag_enter == 1:
+                #     #suggestion = self.__predictor.get_suggestion()
+                #     print("Line after first character is stripped:", rest_of_line)
+                #
+                # flag_enter = 1
 
                 # If suggestion matches
                 if suggestion != '' and rest_of_line.startswith(suggestion):
                     # Log
+                    # print("Correct suggestion:", suggestion)
                     logs.append((suggestion[0], [Style.underline, Text.danger]))
                     logs.append((suggestion[1:], Style.underline))
 
@@ -373,6 +419,8 @@ class Evaluator:
                 # If the suggestion doesn't match
                 else:
                     # Add the next character
+                    # print("\n")
+                    # print("Character to be used for suggestion:", rest_of_line[0])
                     self.__predictor.add(rest_of_line[0])
                     logs.append((rest_of_line[0], Text.subtle))
                     rest_of_line = rest_of_line[1:]
@@ -393,7 +441,9 @@ class Evaluator:
                        percentage_saved=100 * keys_saved / total_keys,
                        total_keys=total_keys,
                        total_lines=len(self.__content))
-
+        percentage_saved1 = 100 * keys_saved / total_keys
+        out_s = '%d, %.4f\n' % (keys_saved, percentage_saved1)
+        file_logger(out_s)
 
 def main():
     lstm_size = 1024
@@ -412,7 +462,7 @@ def main():
 
     experiment.add_pytorch_models({'base': model})
 
-    experiment.load("94ab8470e6a711ea9703c1dbf199539e", 5654)
+    experiment.load("2a86d636936d11eab8740dffb016e7b1", 763205)
 
     # For debugging with a specific piece of source code
     # predictor = Predictor(model, lstm_layers, lstm_size)
@@ -421,12 +471,23 @@ def main():
     # s = predictor.get_suggestion()
 
     # Evaluate all the files in validation set
-    for file in valid_files:
+
+    # errors on
+    # - test_file14.py
+    for i in range(0, len(valid_files)):
+        file = valid_files[i]
+        file_logger("evaluating: " + file.path + "\n")
         logger.log(str(file.path), Text.heading)
         evaluator = Evaluator(model, file,
                               lstm_layers, lstm_size,
                               skip_spaces=True)
         evaluator.eval()
+
+
+def file_logger(line):
+    fp = open("output.txt", "a")
+    fp.write(line)
+    fp.close()
 
 
 if __name__ == '__main__':
